@@ -6,6 +6,13 @@ import type { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
+const DEFAULT_AGENT_NAME = "DCS Code Assistant";
+const DEFAULT_AGENT_ENDPOINT = `https://agent.prashantpatil.dev/agents/${encodeURIComponent(
+  DEFAULT_AGENT_NAME
+)}/chat`;
+const AGENT_ENDPOINT =
+  import.meta.env.VITE_AGENT_ENDPOINT ?? DEFAULT_AGENT_ENDPOINT;
+
 const MARKDOWN_LANGUAGES = new Set(["markdown", "md", "mdx"]);
 
 interface Message {
@@ -185,8 +192,12 @@ const markdownComponents: Components = {
   },
 };
 
-export function ChatDock() {
-  const [open, setOpen] = useState(false);
+interface ChatDockProps {
+  initialOpen?: boolean;
+}
+
+export function ChatDock({ initialOpen = false }: ChatDockProps = {}) {
+  const [open, setOpen] = useState(initialOpen);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -246,32 +257,29 @@ export function ChatDock() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:3141/agents/DCS%20Code%20Assistant/chat",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify({
-            input: [
-              {
-                parts: [{ type: "text", text: text }],
-                id: userMessage.id,
-                role: "user",
-              },
-            ],
-            options: {
-              conversationId: conversationId,
-              userId: "DCS_Student",
-              temperature: 0.7,
-              maxTokens: 16000,
-              maxSteps: 15,
+      const response = await fetch(AGENT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          input: [
+            {
+              parts: [{ type: "text", text: text }],
+              id: userMessage.id,
+              role: "user",
             },
-          }),
-        }
-      );
+          ],
+          options: {
+            conversationId: conversationId,
+            userId: "DCS_Student",
+            temperature: 0.7,
+            maxTokens: 16000,
+            maxSteps: 15,
+          },
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`Voltagent error: ${response.statusText}`);
