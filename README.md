@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# DCS Web Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript + Vite application that powers the Distributed Computing Systems (DCS) learning assistant. The app showcases assignment walkthroughs, code snippets, and an in-browser AI chat helper backed by the DCS Code Assistant.
 
-Currently, two official plugins are available:
+This guide explains how to clone, install, and run the project locally on Android using the Termux environment.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Prerequisites
 
-## React Compiler
+- Android device with the latest [Termux](https://f-droid.org/packages/com.termux/) installed (use the F-Droid release, not the Play Store version).
+- Stable internet connection (initial install pulls ~200 MB of packages).
+- Optional: Bluetooth keyboard or external display for a more comfortable coding setup.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Quick Start on Termux
 
-## Expanding the ESLint configuration
+```bash
+# 1. Update packages
+pkg update && pkg upgrade
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# 2. Install required tooling
+pkg install git nodejs-lts openssl-tool
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# 3. Enable corepack so we can use pnpm
+corepack enable
+corepack prepare pnpm@latest --activate
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# 4. Clone the repository
+git clone https://github.com/PrashantPatil10178/DCS.git
+cd DCS
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 5. Install dependencies
+pnpm install
+
+# 6. (Optional) Point the chat UI at the hosted agent
+export VITE_AGENT_ENDPOINT="https://agent.prashantpatil.dev/agents/DCS%20Code%20Assistant/chat"
+
+# 7. Keep Termux awake while developing (optional)
+termux-wake-lock
+
+# 8. Start the dev server, binding to all interfaces
+pnpm run dev --host 0.0.0.0 --port 4173
+
+# 9. Open the app in a mobile browser
+# Visit http://127.0.0.1:4173 or use your device IP if testing from another device
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The Vite dev server stays active until you stop it with `Ctrl+C`. Run `termux-wake-unlock` when you're done to release the wake lock.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Production Preview on Termux
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Build optimized assets
+pnpm run build
+
+# Preview the production build (uses the same port defaults)
+pnpm run preview --host 0.0.0.0 --port 4173
+
+# Serve the static dist/ folder with the `serve` CLI (recommended for lightweight hosting)
+pnpm dlx serve dist --listen tcp://0.0.0.0:4173
+# or install globally once: pnpm add -g serve
+# then run: serve dist --listen tcp://0.0.0.0:4173
 ```
+
+`preview` serves the output from `dist/` and is useful when you want to test a production-like bundle without deploying elsewhere.
+
+## Environment Notes
+
+- **Port conflicts:** If 4173 is taken, pick any other available port and append `--port <number>` to the `dev` or `preview` command.
+- **Agent endpoint:** When `VITE_AGENT_ENDPOINT` is unset, the chat falls back to the hosted DCS Code Assistant. Provide a different value if you self-host your own agent instance.
+- **Persistence:** Termux keeps the repository inside your home directory. To free up storage, delete `node_modules/` and `dist/` when you are done (`rm -rf node_modules dist`).
+
+## Termux Toolkit Picks
+
+- `pkg install termux-api` (plus the Termux:API app) unlocks clipboard, notifications, and other device features from the terminal.
+- `pkg install tmux` lets you detach sessions so builds keep running even if Termux gets backgrounded.
+- `pkg install htop ripgrep fd` provides lightweight process monitoring and fast file/code search.
+- `pkg install openssh` enables remote SSH access from a laptop while the dev server runs on your phone.
+
+## Troubleshooting
+
+- **SSL issues while installing:** Run `pkg install tur-repo && pkg install ca-certificates` if you encounter certificate problems when cloning or installing packages.
+- **Command not found: pnpm:** Ensure `corepack` is enabled (Step 3). You may need to restart the Termux session after activating corepack.
+- **Slow install:** Use `pnpm install --frozen-lockfile` to stick to the lockfile and avoid network churn.
+
+For deeper customization, refer to the standard Vite + React documentation and adjust scripts inside `package.json` as needed.
