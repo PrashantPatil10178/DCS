@@ -1,0 +1,115 @@
+# Assignment 1: Assignment 1
+# Topic: Socket Programming (Echo Server)
+# Paste this entire block into PowerShell to create all files
+
+@"
+import java.io.*;
+import java.net.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+public class EchoServer {
+private static final int PORT = 5000;
+private static final int MAX_CLIENTS = 50;
+// To assign unique IDs to clients (Client 1, 2, 3...)
+private static AtomicInteger clientCounter = new AtomicInteger(0);
+public static void main(String[] args) {
+ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTS);
+try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+System.out.println("Echo Server started on port " + PORT);
+while (true) {
+Socket clientSocket = serverSocket.accept();
+int clientId = clientCounter.incrementAndGet(); // Assign unique client number
+System.out.println("Client " + clientId + " connected: " +
+clientSocket.getInetAddress() + ":" + clientSocket.getPort());
+clientPool.execute(new ClientHandler(clientId, clientSocket));
+}
+} catch (IOException e) {
+System.err.println("Server error: " + e.getMessage());
+} finally {
+clientPool.shutdown();
+}
+}
+}
+class ClientHandler implements Runnable {
+private final int clientId;
+private final Socket socket;
+public ClientHandler(int clientId, Socket socket) {
+this.clientId = clientId;
+this.socket = socket;
+}
+@Override
+public void run() {
+try (
+BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+String message;
+while ((message = in.readLine()) != null) {
+System.out.println("Received from Client " + clientId + ": \"" + message + "\"");
+out.println("Echo from server: " + message);
+}
+} catch (IOException e) {
+System.err.println("Client " + clientId + " error: " + e.getMessage());
+} finally {
+try {
+System.out.println("Client " + clientId + " disconnected (" + socket.getInetAddress() + ")");
+socket.close();
+} catch (IOException e) {
+System.err.println("Error closing Client " + clientId + " socket: " + e.getMessage());
+}
+}
+}
+}
+"@ | Out-File -FilePath "EchoServer.java" -Encoding UTF8
+Write-Host "Created: EchoServer.java" -ForegroundColor Green
+
+@"
+import java.io.*;
+import java.net.*;
+public class EchoClient {
+private static final String SERVER_ADDRESS = "localhost";
+private static final int SERVER_PORT = 5000;
+public static void main(String[] args) {
+try (
+Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+System.out.println("Connected to Echo Server at " + SERVER_ADDRESS + ":" + SERVER_PORT);
+System.out.println("Type message (type 'exit' to quit):");
+String userInput;
+while (true) {
+System.out.print("You: ");
+userInput = console.readLine();
+if (userInput == null || "exit".equalsIgnoreCase(userInput.trim())) {
+System.out.println("Disconnecting from server...");
+break;
+}
+out.println(userInput); // send to server
+String response = in.readLine(); // read server echo
+if (response == null) {
+System.out.println("Server closed the connection.");
+break;
+}
+System.out.println("Server: " + response);
+}
+} catch (UnknownHostException e) {
+System.err.println("Unknown server: " + SERVER_ADDRESS);
+} catch (IOException e) {
+System.err.println("I/O error: " + e.getMessage());
+}
+}
+}
+"@ | Out-File -FilePath "EchoClient.java" -Encoding UTF8
+Write-Host "Created: EchoClient.java" -ForegroundColor Green
+
+# Run Instructions:
+# 1. Javac EchoServer.java EchoClient.java
+# 2. Java EchoServer.java
+# 3. In another terminal – java EchoClient
+
+# Creating instructions file...
+@"
+1. Javac EchoServer.java EchoClient.java\n2. Java EchoServer.java\n3. In another terminal – java EchoClient
+"@ | Out-File -FilePath "RUN_INSTRUCTIONS.txt" -Encoding UTF8
+Write-Host "Created: RUN_INSTRUCTIONS.txt" -ForegroundColor Green
+Write-Host "All files created successfully!" -ForegroundColor Cyan
