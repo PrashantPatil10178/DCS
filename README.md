@@ -30,20 +30,22 @@ cd DCS
 # 5. Install dependencies
 pnpm install
 
-# 6. (Optional) Point the chat UI at the hosted agent
-export VITE_AGENT_ENDPOINT="https://agent.prashantpatil.dev/agents/DCS%20Code%20Assistant/chat"
-
-# 7. Keep Termux awake while developing (optional)
+# 6. Keep Termux awake while building (optional)
 termux-wake-lock
 
-# 8. Start the dev server, binding to all interfaces
-pnpm run dev --host 0.0.0.0 --port 4173
+# 7. Build the production bundle
+pnpm run build
+
+# 8. Serve the static dist/ folder on port 80 (requires root on most devices)
+pnpm dlx serve dist --listen tcp://0.0.0.0:80
+# or install globally once: pnpm add -g serve
+# then run: serve dist --listen tcp://0.0.0.0:80
 
 # 9. Open the app in a mobile browser
-# Visit http://127.0.0.1:4173 or use your device IP if testing from another device
+# Visit http://127.0.0.1/ or use your device IP if testing from another device
 ```
 
-The Vite dev server stays active until you stop it with `Ctrl+C`. Run `termux-wake-unlock` when you're done to release the wake lock.
+The static server stays active until you stop it with `Ctrl+C`. Run `termux-wake-unlock` when you're done to release the wake lock.
 
 ## Production Preview on Termux
 
@@ -52,12 +54,12 @@ The Vite dev server stays active until you stop it with `Ctrl+C`. Run `termux-wa
 pnpm run build
 
 # Preview the production build (uses the same port defaults)
-pnpm run preview --host 0.0.0.0 --port 4173
+pnpm run preview --host 0.0.0.0 --port 80
 
 # Serve the static dist/ folder with the `serve` CLI (recommended for lightweight hosting)
-pnpm dlx serve dist --listen tcp://0.0.0.0:4173
+pnpm dlx serve dist --listen tcp://0.0.0.0:80
 # or install globally once: pnpm add -g serve
-# then run: serve dist --listen tcp://0.0.0.0:4173
+# then run: serve dist --listen tcp://0.0.0.0:80
 ```
 
 `preview` serves the output from `dist/` and is useful when you want to test a production-like bundle without deploying elsewhere.
@@ -67,6 +69,7 @@ pnpm dlx serve dist --listen tcp://0.0.0.0:4173
 - **Port conflicts:** If 4173 is taken, pick any other available port and append `--port <number>` to the `dev` or `preview` command.
 - **Agent endpoint:** When `VITE_AGENT_ENDPOINT` is unset, the chat falls back to the hosted DCS Code Assistant. Provide a different value if you self-host your own agent instance.
 - **Persistence:** Termux keeps the repository inside your home directory. To free up storage, delete `node_modules/` and `dist/` when you are done (`rm -rf node_modules dist`).
+- **Privileged ports:** Binding to port 80 usually requires root. On Termux use `tsu`/`sudo` or choose a higher port (e.g., 4173) if you do not have elevated privileges.
 
 ## Termux Toolkit Picks
 
