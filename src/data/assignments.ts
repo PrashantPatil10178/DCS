@@ -234,96 +234,589 @@ public class MyClient {
       topic: "CORBA (Common Object Request Broker Architecture)",
       parts: [
         {
-          title:
-            "Example 1: Multi-Service Server (String, Calculator, Factorial)",
+          title: "Example 1: Calculator Service",
           files: [
             {
-              file_name: "StringApp/String.idl",
-              language: "IDL",
-              code: `module StringApp {
-  interface StringOps {
-    string reverse(in string input);
-    string toUpper(in string input);
-  };
-};`,
-            },
-            {
-              file_name: "CalculatorApp/Calculator.idl",
+              file_name: "Calculator.idl",
               language: "IDL",
               code: `module CalculatorApp {
-  interface Calculator {
-    float add(in float a, in float b);
-    float sub(in float a, in float b);
-    float mul(in float a, in float b);
-    float div(in float a, in float b);
-  };
+    interface Calculator {
+        float add(in float a, in float b);
+        float sub(in float a, in float b);
+        float mul(in float a, in float b);
+        float div(in float a, in float b);
+    };
 };`,
             },
             {
-              file_name: "FactorialApp/Factorial.idl",
+              file_name: "CalculatorApp/CalculatorImpl.java",
+              language: "Java",
+              code: `package CalculatorApp;
+import org.omg.CORBA.*;
+
+public class CalculatorImpl extends CalculatorPOA {
+    public float add(float a, float b) { return a + b; }
+    public float sub(float a, float b) { return a - b; }
+    public float mul(float a, float b) { return a * b; }
+    public float div(float a, float b) { return a / b; }
+}`,
+            },
+            {
+              file_name: "CalculatorApp/Server.java",
+              language: "Java",
+              code: `package CalculatorApp;
+
+import org.omg.CORBA.*;
+import org.omg.PortableServer.*;
+import org.omg.CosNaming.*;
+
+public class Server {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
+
+            // Create and register Calculator service
+            CalculatorImpl calcImpl = new CalculatorImpl();
+            org.omg.CORBA.Object ref = rootpoa.servant_to_reference(calcImpl);
+            Calculator calcRef = CalculatorHelper.narrow(ref);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            ncRef.rebind(ncRef.to_name("CalculatorService"), calcRef);
+
+            System.out.println("✅ Calculator service registered successfully.");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "CalculatorApp/Client1.java",
+              language: "Java",
+              code: `package CalculatorApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client1 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            Calculator calc = CalculatorHelper.narrow(ncRef.resolve_str("CalculatorService"));
+
+            System.out.println("Addition (10 + 5): " + calc.add(10, 5));
+            System.out.println("Subtraction (10 - 5): " + calc.sub(10, 5));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "CalculatorApp/Client2.java",
+              language: "Java",
+              code: `package CalculatorApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client2 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            Calculator calc = CalculatorHelper.narrow(ncRef.resolve_str("CalculatorService"));
+
+            System.out.println("Multiplication (6 * 4): " + calc.mul(6, 4));
+            System.out.println("Division (20 / 4): " + calc.div(20, 4));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+          ],
+          run_instructions: [
+            "1. Install Zulu JDK (with CORBA) and add its 'bin' folder to your PATH.",
+            "2. Create a folder `CalculatorApp` and place `Calculator.idl` inside it.",
+            "3. Run `idlj -fall Calculator.idl`. This creates a nested `CalculatorApp/CalculatorApp` directory.",
+            "4. Place `CalculatorImpl.java`, `Server.java`, `Client1.java`, and `Client2.java` inside the *nested* `CalculatorApp/CalculatorApp` directory (alongside the generated files).",
+            "5. Compile from the *outer* `CalculatorApp` folder: `javac CalculatorApp/*.java`",
+            "6. Terminal 1: `orbd -ORBInitialPort 1050`",
+            "7. Terminal 2: `java CalculatorApp.Server -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "8. Terminal 3: `java CalculatorApp.Client1 -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "9. Terminal 4: `java CalculatorApp.Client2 -ORBInitialHost localhost -ORBInitialPort 1050`",
+          ],
+        },
+        {
+          title: "Example 2: String Service",
+          files: [
+            {
+              file_name: "String.idl",
               language: "IDL",
-              code: `module FactorialApp {
-  interface Factorial {
-    long compute(in long n);
-  };
+              code: `module StringApp {
+    interface StringOps {
+        string reverse(in string input);
+        string toUpper(in string input);
+    };
 };`,
             },
             {
               file_name: "StringApp/StringImpl.java",
               language: "Java",
               code: `package StringApp;
-
 import org.omg.CORBA.*;
 
 public class StringImpl extends StringOpsPOA {
-  public String reverse(String input) {
-    return new StringBuilder(input).reverse().toString();
-  }
+    public String reverse(String input) {
+        return new StringBuilder(input).reverse().toString();
+    }
+    public String toUpper(String input) {
+        return input.toUpperCase();
+    }
+}`,
+            },
+            {
+              file_name: "StringApp/Server.java",
+              language: "Java",
+              code: `package StringApp;
 
-  public String toUpper(String input) {
-    return input.toUpperCase();
-  }
+import org.omg.CORBA.*;
+import org.omg.PortableServer.*;
+import org.omg.CosNaming.*;
+
+public class Server {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
+
+            // Create & register String service
+            StringImpl strImpl = new StringImpl();
+            org.omg.CORBA.Object ref = rootpoa.servant_to_reference(strImpl);
+            StringOps strRef = StringOpsHelper.narrow(ref);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            ncRef.rebind(ncRef.to_name("StringService"), strRef);
+
+            System.out.println("✅ String service registered successfully.");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "StringApp/Client1.java",
+              language: "Java",
+              code: `package StringApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client1 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            StringOps str = StringOpsHelper.narrow(ncRef.resolve_str("StringService"));
+
+            System.out.println("Reverse: " + str.reverse("Distributed"));
+            System.out.println("Upper: " + str.toUpper("computing"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "StringApp/Client2.java",
+              language: "Java",
+              code: `package StringApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client2 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            StringOps str = StringOpsHelper.narrow(ncRef.resolve_str("StringService"));
+
+            System.out.println("Reverse: " + str.reverse("CORBA"));
+            System.out.println("Upper: " + str.toUpper("middleware"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+          ],
+          run_instructions: [
+            "1. Install Zulu JDK (with CORBA) and add its 'bin' folder to your PATH.",
+            "2. Create a folder `StringApp` and place `String.idl` inside it.",
+            "3. Run `idlj -fall String.idl`. This creates a nested `StringApp/StringApp` directory.",
+            "4. Place `StringImpl.java`, `Server.java`, `Client1.java`, and `Client2.java` inside the *nested* `StringApp/StringApp` directory.",
+            "5. Compile from the *outer* `StringApp` folder: `javac StringApp/*.java`",
+            "6. Terminal 1: `orbd -ORBInitialPort 1050`",
+            "7. Terminal 2: `java StringApp.Server -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "8. Terminal 3: `java StringApp.Client1 -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "9. Terminal 4: `java StringApp.Client2 -ORBInitialHost localhost -ORBInitialPort 1050`",
+          ],
+        },
+        {
+          title: "Example 3: Factorial Service",
+          files: [
+            {
+              file_name: "Factorial.idl",
+              language: "IDL",
+              code: `module FactorialApp {
+    interface Factorial {
+        long compute(in long n);
+    };
+};`,
+            },
+            {
+              file_name: "FactorialApp/FactorialImpl.java",
+              language: "Java",
+              code: `package FactorialApp;
+import org.omg.CORBA.*;
+
+public class FactorialImpl extends FactorialPOA {
+    public long compute(long n) {
+        if (n <= 1) return 1;
+        return n * compute(n - 1);
+    }
+}
+
+/* NOTE: 
+If after running idlj, the generated file FactorialOperations.java shows:
+  int compute(int n);
+then change your implementation to use int instead of long:
+
+package FactorialApp;
+import org.omg.CORBA.*;
+public class FactorialImpl extends FactorialPOA {
+    public int compute(int n) {
+        if (n <= 1) return 1;
+        return n * compute(n - 1);
+    }
+}
+*/`,
+            },
+            {
+              file_name: "FactorialApp/Server.java",
+              language: "Java",
+              code: `package FactorialApp;
+
+import org.omg.CORBA.*;
+import org.omg.PortableServer.*;
+import org.omg.CosNaming.*;
+
+public class Server {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
+
+            // Create and register Factorial service
+            FactorialImpl factImpl = new FactorialImpl();
+            org.omg.CORBA.Object ref = rootpoa.servant_to_reference(factImpl);
+            Factorial factRef = FactorialHelper.narrow(ref);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            ncRef.rebind(ncRef.to_name("FactorialService"), factRef);
+
+            System.out.println("✅ Factorial service registered successfully.");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "FactorialApp/Client1.java",
+              language: "Java",
+              code: `package FactorialApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client1 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            Factorial fact = FactorialHelper.narrow(ncRef.resolve_str("FactorialService"));
+
+            System.out.println("Factorial(5): " + fact.compute(5));
+            System.out.println("Factorial(7): " + fact.compute(7));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "FactorialApp/Client2.java",
+              language: "Java",
+              code: `package FactorialApp;
+
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client2 {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            Factorial fact = FactorialHelper.narrow(ncRef.resolve_str("FactorialService"));
+
+            System.out.println("Factorial(3): " + fact.compute(3));
+            System.out.println("Factorial(10): " + fact.compute(10));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+          ],
+          run_instructions: [
+            "1. Install Zulu JDK (with CORBA) and add its 'bin' folder to your PATH.",
+            "2. Create a folder `FactorialApp` and place `Factorial.idl` inside it.",
+            "3. Run `idlj -fall Factorial.idl`. This creates `FactorialApp/FactorialApp`.",
+            "4. Place `FactorialImpl.java`, `Server.java`, `Client1.java`, and `Client2.java` inside `FactorialApp/FactorialApp`.",
+            "5. (Check) Check the generated `FactorialApp/FactorialOperations.java` file. If it uses `int`, modify your `FactorialImpl.java` to use `int` as per the note.",
+            "6. Compile from the *outer* `FactorialApp` folder: `javac FactorialApp/*.java`",
+            "7. Terminal 1: `orbd -ORBInitialPort 1050`",
+            "8. Terminal 2: `java FactorialApp.Server -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "9. Terminal 3: `java FactorialApp.Client1 -ORBInitialHost localhost -ORBInitialPort 1050`",
+            "10. Terminal 4: `java FactorialApp.Client2 -ORBInitialHost localhost -ORBInitialPort 1050`",
+          ],
+        },
+        {
+          title: "Example 4: Simple 'Hello' Service",
+          files: [
+            {
+              file_name: "Hello.idl",
+              language: "IDL",
+              code: `module HelloApp {
+    interface Hello {
+        string sayHello(in string name);
+    };
+};`,
+            },
+            {
+              file_name: "HelloApp/HelloImpl.java",
+              language: "Java",
+              code: `package HelloApp;
+
+import org.omg.CORBA.*;
+
+public class HelloImpl extends HelloPOA {
+    private ORB orb;
+
+    public void setORB(ORB orb_val) {
+        orb = orb_val;
+    }
+
+    @Override
+    public String sayHello(String name) {
+        System.out.println("Request from client: " + name);
+        return "Hello, " + name + " (from CORBA Server)";
+    }
+}`,
+            },
+            {
+              file_name: "Server.java",
+              language: "Java",
+              code: `import HelloApp.*;
+import org.omg.CORBA.*;
+import org.omg.PortableServer.*;
+import org.omg.CosNaming.*;
+
+public class Server {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
+
+            HelloImpl helloImpl = new HelloImpl();
+            helloImpl.setORB(orb);
+
+            org.omg.CORBA.Object ref = rootpoa.servant_to_reference(helloImpl);
+            Hello href = HelloHelper.narrow(ref);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            String name = "HelloService";
+            NameComponent path[] = ncRef.to_name(name);
+            ncRef.rebind(path, href);
+
+            System.out.println("Server ready...");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+            {
+              file_name: "Client.java",
+              language: "Java",
+              code: `import HelloApp.*;
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+
+public class Client {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            String name = "HelloService";
+            Hello helloRef = HelloHelper.narrow(ncRef.resolve_str(name));
+
+            System.out.println("Got reference to HelloService");
+            String result = helloRef.sayHello("Student");
+            System.out.println("Response from server: " + result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`,
+            },
+          ],
+          run_instructions: [
+            "1. Install Zulu JDK (with CORBA) and add its 'bin' folder to your PATH.",
+            "2. Create a root project folder.",
+            "3. Create `Hello.idl` in the root folder.",
+            "4. Run `idlj -fall Hello.idl`. This will create a `HelloApp` folder.",
+            "5. Create `HelloApp/HelloImpl.java`.",
+            "6. Create `Server.java` and `Client.java` in the root folder.",
+            "7. Compile: `javac HelloApp/*.java Server.java Client.java` (or `javac HelloApp/HelloImpl.java Server.java Client.java`)",
+            "8. Terminal 1: `orbd -ORBInitialPort 1050`",
+            "9. Terminal 2: `java Server -ORBInitialHost localhost -ORBInitialPort 1050` (Expected: Server ready...)",
+            "10. Terminal 3: `java Client -ORBInitialHost localhost -ORBInitialPort 1050` (Expected: Got reference..., Response from server: Hello, Student...)",
+          ],
+        },
+        {
+          title: "Example 5: Multi-Service Server (All-in-One)",
+          files: [
+            {
+              file_name: "StringApp/String.idl",
+              language: "IDL",
+              code: `module StringApp {
+    interface StringOps {
+        string reverse(in string input);
+        string toUpper(in string input);
+    };
+};`,
+            },
+            {
+              file_name: "CalculatorApp/Calculator.idl",
+              language: "IDL",
+              code: `module CalculatorApp {
+    interface Calculator {
+        float add(in float a, in float b);
+        float sub(in float a, in float b);
+        float mul(in float a, in float b);
+        float div(in float a, in float b);
+    };
+};`,
+            },
+            {
+              file_name: "FactorialApp/Factorial.idl",
+              language: "IDL",
+              code: `module FactorialApp {
+    interface Factorial {
+        long compute(in long n);
+    };
+};`,
+            },
+            {
+              file_name: "StringApp/StringImpl.java",
+              language: "Java",
+              code: `package StringApp;
+import org.omg.CORBA.*;
+
+public class StringImpl extends StringOpsPOA {
+    public String reverse(String input) {
+        return new StringBuilder(input).reverse().toString();
+    }
+    public String toUpper(String input) {
+        return input.toUpperCase();
+    }
 }`,
             },
             {
               file_name: "CalculatorApp/CalculatorImpl.java",
               language: "Java",
               code: `package CalculatorApp;
-
 import org.omg.CORBA.*;
 
 public class CalculatorImpl extends CalculatorPOA {
-  public float add(float a, float b) { return a + b; }
-  public float sub(float a, float b) { return a - b; }
-  public float mul(float a, float b) { return a * b; }
-  public float div(float a, float b) { return a / b; }
+    public float add(float a, float b) { return a + b; }
+    public float sub(float a, float b) { return a - b; }
+    public float mul(float a, float b) { return a * b; }
+    public float div(float a, float b) { return a / b; }
 }`,
             },
             {
               file_name: "FactorialApp/FactorialImpl.java",
               language: "Java",
               code: `package FactorialApp;
-
 import org.omg.CORBA.*;
 
 public class FactorialImpl extends FactorialPOA {
-  public long compute(long n) {
-    if (n <= 1) return 1;
-    return n * compute(n - 1);
-  }
+    public long compute(long n) {
+        if (n <= 1) return 1;
+        return n * compute(n - 1);
+    }
 }
 
-/*
-Note: If idlj generates 'int compute(int n)', use this implementation instead:
+/* Note: If idlj generates 'int compute(int n)', use this implementation instead:
 
 package FactorialApp;
 import org.omg.CORBA.*;
 
 public class FactorialImpl extends FactorialPOA {
-  public int compute(int n) {
-    if (n <= 1) return 1;
-    return n * compute(n - 1);
-  }
+    public int compute(int n) {
+        if (n <= 1) return 1;
+        return n * compute(n - 1);
+    }
 }
 
 */`,
@@ -339,38 +832,38 @@ import org.omg.PortableServer.*;
 import org.omg.CosNaming.*;
 
 public class Server {
-  public static void main(String[] args) {
-    try {
-      ORB orb = ORB.init(args, null);
-      POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
-      rootpoa.the_POAManager().activate();
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
 
-      // Create & register services
-      StringImpl strImpl = new StringImpl();
-      CalculatorImpl calcImpl = new CalculatorImpl();
-      FactorialImpl factImpl = new FactorialImpl();
+            // Create & register services
+            StringImpl strImpl = new StringImpl();
+            CalculatorImpl calcImpl = new CalculatorImpl();
+            FactorialImpl factImpl = new FactorialImpl();
 
-      org.omg.CORBA.Object ref1 = rootpoa.servant_to_reference(strImpl);
-      org.omg.CORBA.Object ref2 = rootpoa.servant_to_reference(calcImpl);
-      org.omg.CORBA.Object ref3 = rootpoa.servant_to_reference(factImpl);
+            org.omg.CORBA.Object ref1 = rootpoa.servant_to_reference(strImpl);
+            org.omg.CORBA.Object ref2 = rootpoa.servant_to_reference(calcImpl);
+            org.omg.CORBA.Object ref3 = rootpoa.servant_to_reference(factImpl);
 
-      StringOps strRef = StringOpsHelper.narrow(ref1);
-      Calculator calcRef = CalculatorHelper.narrow(ref2);
-      Factorial factRef = FactorialHelper.narrow(ref3);
+            StringOps strRef = StringOpsHelper.narrow(ref1);
+            Calculator calcRef = CalculatorHelper.narrow(ref2);
+            Factorial factRef = FactorialHelper.narrow(ref3);
 
-      org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
-      NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 
-      ncRef.rebind(ncRef.to_name("StringService"), strRef);
-      ncRef.rebind(ncRef.to_name("CalculatorService"), calcRef);
-      ncRef.rebind(ncRef.to_name("FactorialService"), factRef);
+            ncRef.rebind(ncRef.to_name("StringService"), strRef);
+            ncRef.rebind(ncRef.to_name("CalculatorService"), calcRef);
+            ncRef.rebind(ncRef.to_name("FactorialService"), factRef);
 
-      System.out.println("✅ All services registered.");
-      orb.run();
-    } catch (Exception e) {
-      e.printStackTrace();
+            System.out.println("✅ All services registered.");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-  }
 }`,
             },
             {
@@ -381,19 +874,19 @@ import org.omg.CORBA.*;
 import org.omg.CosNaming.*;
 
 public class Client1 {
-  public static void main(String[] args) {
-    try {
-      ORB orb = ORB.init(args, null);
-      org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
-      NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 
-      StringOps str = StringOpsHelper.narrow(ncRef.resolve_str("StringService"));
-      System.out.println("Reverse: " + str.reverse("Distributed"));
-      System.out.println("Upper: " + str.toUpper("computing"));
-    } catch (Exception e) {
-      e.printStackTrace();
+            StringOps str = StringOpsHelper.narrow(ncRef.resolve_str("StringService"));
+            System.out.println("Reverse: " + str.reverse("Distributed"));
+            System.out.println("Upper: " + str.toUpper("computing"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-  }
 }`,
             },
             {
@@ -405,151 +898,41 @@ import org.omg.CORBA.*;
 import org.omg.CosNaming.*;
 
 public class Client2 {
-  public static void main(String[] args) {
-    try {
-      ORB orb = ORB.init(args, null);
-      org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
-      NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 
-      Calculator calc = CalculatorHelper.narrow(ncRef.resolve_str("CalculatorService"));
-      Factorial fact = FactorialHelper.narrow(ncRef.resolve_str("FactorialService"));
+            Calculator calc = CalculatorHelper.narrow(ncRef.resolve_str("CalculatorService"));
+            Factorial fact = FactorialHelper.narrow(ncRef.resolve_str("FactorialService"));
 
-      System.out.println("Addition: " + calc.add(10, 20));
-      System.out.println("Multiplication: " + calc.mul(5, 4));
-      System.out.println("Factorial(5): " + fact.compute(5));
-    } catch (Exception e) {
-      e.printStackTrace();
+            System.out.println("Addition: " + calc.add(10, 20));
+            System.out.println("Multiplication: " + calc.mul(5, 4));
+            System.out.println("Factorial(5): " + fact.compute(5));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-  }
 }`,
             },
           ],
           run_instructions: [
-            "Download/install a JDK with CORBA support (e.g., Zulu JDK 8/11) and add bin to PATH",
-            "Create root folder with subfolders: StringApp, CalculatorApp, FactorialApp",
-            "Place String.idl, Calculator.idl, Factorial.idl in their respective folders",
-            "Run idlj -fall StringApp/String.idl",
-            "Run idlj -fall CalculatorApp/Calculator.idl",
-            "Run idlj -fall FactorialApp/Factorial.idl",
-            "Add StringImpl.java, CalculatorImpl.java, FactorialImpl.java to respective folders",
-            "Place Server.java, Client1.java, Client2.java in root folder",
-            "Compile: javac StringApp/*.java CalculatorApp/*.java FactorialApp/*.java Server.java Client1.java Client2.java",
-            "Troubleshoot Factorial signature if needed, then recompile",
-            "Terminal 1: orbd -ORBInitialPort 1050",
-            "Terminal 2: java Server -ORBInitialHost localhost -ORBInitialPort 1050",
-            "Terminal 3: java Client1 -ORBInitialHost localhost -ORBInitialPort 1050",
-            "Terminal 4: java Client2 -ORBInitialHost localhost -ORBInitialPort 1050",
-            "If port conflict occurs, choose a new ORBInitialPort (e.g., 1051) everywhere",
-          ],
-        },
-        {
-          title: "Example 2: Simple 'Hello' Service",
-          files: [
-            {
-              file_name: "Hello.idl",
-              language: "IDL",
-              code: `module HelloApp {
-  interface Hello {
-    string sayHello(in string name);
-  };
-};`,
-            },
-            {
-              file_name: "HelloApp/HelloImpl.java",
-              language: "Java",
-              code: `package HelloApp;
-
-import org.omg.CORBA.*;
-
-public class HelloImpl extends HelloPOA {
-  private ORB orb;
-
-  public void setORB(ORB orb_val) {
-    orb = orb_val;
-  }
-
-  @Override
-  public String sayHello(String name) {
-    System.out.println("Request from client: " + name);
-    return "Hello, " + name + " (from CORBA Server)";
-  }
-}`,
-            },
-            {
-              file_name: "Server.java",
-              language: "Java",
-              code: `import HelloApp.*;
-import org.omg.CORBA.*;
-import org.omg.PortableServer.*;
-import org.omg.CosNaming.*;
-
-public class Server {
-  public static void main(String[] args) {
-    try {
-      ORB orb = ORB.init(args, null);
-
-      POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
-      rootpoa.the_POAManager().activate();
-
-      HelloImpl helloImpl = new HelloImpl();
-      helloImpl.setORB(orb);
-
-      org.omg.CORBA.Object ref = rootpoa.servant_to_reference(helloImpl);
-      Hello href = HelloHelper.narrow(ref);
-
-      org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
-      NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
-
-      String name = "HelloService";
-      NameComponent[] path = ncRef.to_name(name);
-      ncRef.rebind(path, href);
-
-      System.out.println("Server ready...");
-      orb.run();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-}`,
-            },
-            {
-              file_name: "Client.java",
-              language: "Java",
-              code: `import HelloApp.*;
-import org.omg.CORBA.*;
-import org.omg.CosNaming.*;
-
-public class Client {
-  public static void main(String[] args) {
-    try {
-      ORB orb = ORB.init(args, null);
-
-      org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
-      NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
-
-      String name = "HelloService";
-      Hello helloRef = HelloHelper.narrow(ncRef.resolve_str(name));
-
-      System.out.println("Got reference to HelloService");
-      String result = helloRef.sayHello("Student");
-      System.out.println("Response from server: " + result);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-}`,
-            },
-          ],
-          run_instructions: [
-            "Create project root folder",
-            "Place Hello.idl in root",
-            "Run idlj -fall Hello.idl",
-            "Create HelloApp/HelloImpl.java",
-            "Create Server.java and Client.java in root",
-            "Compile: javac HelloApp/*.java Server.java Client.java",
-            "Terminal 1: orbd -ORBInitialPort 1050",
-            "Terminal 2: java Server -ORBInitialHost localhost -ORBInitialPort 1050",
-            "Terminal 3: java Client -ORBInitialHost localhost -ORBInitialPort 1050",
+            "1. Install Zulu JDK (with CORBA) and add its 'bin' folder to your PATH.",
+            "2. Create a root project folder. Inside it, create folders: `StringApp`, `CalculatorApp`, `FactorialApp`.",
+            "3. Place `String.idl`, `Calculator.idl`, and `Factorial.idl` in their respective folders.",
+            "4. Run `idlj -fall StringApp/String.idl`",
+            "5. Run `idlj -fall CalculatorApp/Calculator.idl`",
+            "6. Run `idlj -fall FactorialApp/Factorial.idl`",
+            "7. Place `StringImpl.java`, `CalculatorImpl.java`, and `FactorialImpl.java` in their respective *nested* package folders (e.g., `StringApp/StringApp/StringImpl.java`).",
+            "8. Place `Server.java`, `Client1.java`, and `Client2.java` in the root project folder.",
+            "9. Compile: `javac StringApp/*.java CalculatorApp/*.java FactorialApp/*.java Server.java Client1.java Client2.java`",
+            "10. (Troubleshooting): If compilation fails, check `FactorialApp/FactorialOperations.java`. Match the `compute` method signature in `FactorialImpl.java` (e.g., `int compute(int n)`) and recompile.",
+            "11. Terminal 1: `orbd -ORBInitialPort 1050`",
+            "12. Terminal 2: `java Server -ORBInitialHost localhost -ORBInitialPort 1050` (Expected: ✅ All services registered.)",
+            "13. Terminal 3: `java Client1 -ORBInitialHost localhost -ORBInitialPort 1050` (Expected: Reverse: detubirtsiD, Upper: COMPUTING)",
+            "14. Terminal 4: `java Client2 -ORBInitialHost localhost -ORBInitialPort 1050` (Expected: Addition: 30.0, Multiplication: 20.0, Factorial(5): 120)",
+            "15. (Re-run): If 'Address already in use' error, use a new port in all commands (e.g., 1051).",
           ],
         },
       ],
@@ -868,9 +1251,112 @@ public class RingElection {
     },
     {
       id: 6,
-      title: "Assignment 6 Map Reduce (python code)",
+      title: "Assignment 6: MapReduce (Java and Python)",
       topic: "MapReduce (Word Count)",
       files: [
+        {
+          file_name: "MapReduceWordCount.java",
+          language: "Java",
+          code: `import java.util.*;
+import java.util.regex.*;
+
+public class MapReduceWordCount {
+
+    // --- Step 1: Mapper Function ---
+    // Takes a document and emits (word, 1) pairs
+    public static List<AbstractMap.SimpleEntry<String, Integer>> mapper(String document) {
+        List<AbstractMap.SimpleEntry<String, Integer>> pairs = new ArrayList<>();
+
+        // Normalize text: lowercase and remove punctuation
+        String cleanedText = document.toLowerCase().replaceAll("[^\\w\\s]", "");
+        String[] words = cleanedText.split("\\\\s+");
+
+        // Emit (word, 1)
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                pairs.add(new AbstractMap.SimpleEntry<>(word, 1));
+            }
+        }
+
+        return pairs;
+    }
+
+    // --- Step 3: Reducer Function ---
+    // Takes a key (word) and list of counts, returns total count
+    public static AbstractMap.SimpleEntry<String, Integer> reducer(String key, List<Integer> values) {
+        int total = 0;
+        for (int val : values) {
+            total += val;
+        }
+        return new AbstractMap.SimpleEntry<>(key, total);
+    }
+
+    // --- Main Function to Simulate MapReduce Flow ---
+    public static void main(String[] args) {
+        // Input Documents
+        String[] documents = {
+            "Data science is the future of technology and business intelligence.",
+            "Machine learning algorithms can analyze massive amounts of data efficiently.",
+            "Big data analytics helps companies make better business decisions.",
+            "Python programming is essential for data science and machine learning projects."
+        };
+
+        System.out.println("--- Input Documents ---");
+        for (String doc : documents) {
+            System.out.println("- " + doc);
+        }
+        System.out.println("\n" + "=".repeat(30) + "\n");
+
+        // --- 1. MAP PHASE ---
+        System.out.println("--- 1. Map Phase ---");
+        List<AbstractMap.SimpleEntry<String, Integer>> mappedPairs = new ArrayList<>();
+
+        for (String doc : documents) {
+            List<AbstractMap.SimpleEntry<String, Integer>> pairs = mapper(doc);
+            for (AbstractMap.SimpleEntry<String, Integer> pair : pairs) {
+                mappedPairs.add(pair);
+                System.out.println("  Mapper output: " + pair);
+            }
+        }
+
+        System.out.println("\n" + "=".repeat(30) + "\n");
+
+        // --- 2. SHUFFLE & SORT PHASE ---
+        System.out.println("--- 2. Shuffle & Sort Phase (Grouping) ---");
+        Map<String, List<Integer>> shuffledData = new TreeMap<>();
+
+        for (AbstractMap.SimpleEntry<String, Integer> pair : mappedPairs) {
+            String key = pair.getKey();
+            int value = pair.getValue();
+            shuffledData.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+        }
+
+        for (Map.Entry<String, List<Integer>> entry : shuffledData.entrySet()) {
+            System.out.println("  Grouped: ('" + entry.getKey() + "', " + entry.getValue() + ")");
+        }
+
+        System.out.println("\n" + "=".repeat(30) + "\n");
+
+        // --- 3. REDUCE PHASE ---
+        System.out.println("--- 3. Reduce Phase ---");
+        Map<String, Integer> finalCounts = new TreeMap<>();
+
+        for (Map.Entry<String, List<Integer>> entry : shuffledData.entrySet()) {
+            AbstractMap.SimpleEntry<String, Integer> result = reducer(entry.getKey(), entry.getValue());
+            finalCounts.put(result.getKey(), result.getValue());
+            System.out.println("  Reducer output: ('" + result.getKey() + "', " + result.getValue() + ")");
+        }
+
+        System.out.println("\n" + "=".repeat(30) + "\n");
+
+        // --- Final Output ---
+        System.out.println("--- Final Word Counts ---");
+        for (Map.Entry<String, Integer> entry : finalCounts.entrySet()) {
+            System.out.println(entry.getKey() + " = " + entry.getValue());
+        }
+    }
+}`,
+        },
         {
           file_name: "mapReduce.py",
           language: "Python",
@@ -944,7 +1430,14 @@ if __name__ == "__main__":
 `,
         },
       ],
-      run_instructions: ["python mapReduce.py"],
+      run_instructions: [
+        "For Java:",
+        "javac MapReduceWordCount.java",
+        "java MapReduceWordCount",
+        "",
+        "For Python:",
+        "python mapReduce.py",
+      ],
     },
     {
       id: 7,
