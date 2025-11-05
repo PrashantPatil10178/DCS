@@ -1152,101 +1152,107 @@ public class BullyAlgorithm {
         {
           file_name: "RingElection.java",
           language: "Java",
-          code: `import java.util.*;
+          code: `package fifth_updated;
+
+import java.util.*;
 
 class Process {
-  int index;
-  int id;
-  boolean isActive;
+    int index;
+    int id;
+    boolean isActive;
 
-  Process(int index, int id) {
-    this.index = index;
-    this.id = id;
-    this.isActive = true;
-  }
+    public Process(int index, int id) {
+        this.index = index;
+        this.id = id;
+        this.isActive = true;
+    }
 }
 
 public class RingElection {
-  static final Scanner sc = new Scanner(System.in);
-  static final List<Process> ring = new ArrayList<>();
+    static Scanner sc = new Scanner(System.in);
+    static List<Process> ring = new ArrayList<>();
 
-  public static void main(String[] args) {
-    System.out.print("Enter number of processes: ");
-    int n = sc.nextInt();
+    public static void main(String[] args) {
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
 
-    for (int i = 0; i < n; i++) {
-      System.out.print("Enter ID for process " + i + ": ");
-      int id = sc.nextInt();
-      ring.add(new Process(i, id));
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter ID for process " + i + ": ");
+            int id = sc.nextInt();
+            ring.add(new Process(i, id));
+        }
+
+        // Simulate coordinator failure: deactivate last process
+        ring.get(n - 1).isActive = false;
+        System.out.println("Process " + ring.get(n - 1).id + " is set as inactive (coordinator down)");
+
+        while (true) {
+            System.out.println("\nMenu:\n1. Start Election\n2. Exit");
+            int choice = sc.nextInt();
+
+            if (choice == 1) {
+                System.out.print("Enter initiator process ID: ");
+                int initiatorId = sc.nextInt();
+                startElection(initiatorId);
+            } else {
+                break;
+            }
+        }
     }
 
-    ring.get(n - 1).isActive = false;
-    System.out.println("Process " + ring.get(n - 1).id + " is set as inactive (coordinator down)");
+    static void startElection(int initiatorId) {
+        int n = ring.size();
+        int initiatorIndex = -1;
 
-    while (true) {
-      System.out.println("\nMenu:\n1. Start Election\n2. Exit");
-      int choice = sc.nextInt();
+        // Find initiator index
+        for (int i = 0; i < n; i++) {
+            if (ring.get(i).id == initiatorId && ring.get(i).isActive) {
+                initiatorIndex = i;
+                break;
+            }
+        }
 
-      if (choice == 1) {
-        System.out.print("Enter initiator process ID: ");
-        int initiatorId = sc.nextInt();
-        startElection(initiatorId);
-      } else {
-        break;
-      }
+        if (initiatorIndex == -1) {
+            System.out.println("Invalid initiator or process is inactive.");
+            return;
+        }
+
+        System.out.println("Election initiated by Process " + initiatorId);
+
+        List<Integer> electionIds = new ArrayList<>();
+        int currentIndex = initiatorIndex;
+
+        do {
+            Process p = ring.get(currentIndex);
+            if (p.isActive) {
+                System.out.println("Process " + p.id + " received election message.");
+                electionIds.add(p.id);
+            }
+            currentIndex = (currentIndex + 1) % n;
+        } while (currentIndex != initiatorIndex);
+
+        int newCoordinatorId = Collections.max(electionIds);
+        System.out.println("Election complete. New coordinator is Process " + newCoordinatorId);
+
+        // Announce coordinator
+        currentIndex = initiatorIndex;
+        do {
+            Process p = ring.get(currentIndex);
+            if (p.isActive) {
+                System.out.println("Process " + p.id + " notified: New coordinator is Process " + newCoordinatorId);
+            }
+            currentIndex = (currentIndex + 1) % n;
+        } while (currentIndex != initiatorIndex);
     }
-  }
-
-  static void startElection(int initiatorId) {
-    int n = ring.size();
-    int initiatorIndex = -1;
-
-    for (int i = 0; i < n; i++) {
-      if (ring.get(i).id == initiatorId && ring.get(i).isActive) {
-        initiatorIndex = i;
-        break;
-      }
-    }
-
-    if (initiatorIndex == -1) {
-      System.out.println("Invalid initiator or process is inactive.");
-      return;
-    }
-
-    System.out.println("Election initiated by Process " + initiatorId);
-
-    List<Integer> electionIds = new ArrayList<>();
-    int currentIndex = initiatorIndex;
-
-    do {
-      Process p = ring.get(currentIndex);
-      if (p.isActive) {
-        System.out.println("Process " + p.id + " received election message.");
-        electionIds.add(p.id);
-      }
-      currentIndex = (currentIndex + 1) % n;
-    } while (currentIndex != initiatorIndex);
-
-    int newCoordinatorId = Collections.max(electionIds);
-    System.out.println("Election complete. New coordinator is Process " + newCoordinatorId);
-
-    currentIndex = initiatorIndex;
-    do {
-      Process p = ring.get(currentIndex);
-      if (p.isActive) {
-        System.out.println("Process " + p.id + " notified: New coordinator is Process " + newCoordinatorId);
-      }
-      currentIndex = (currentIndex + 1) % n;
-    } while (currentIndex != initiatorIndex);
-  }
 }`,
         },
       ],
       run_instructions: [
         "javac BullyAlgorithm.java",
         "java BullyAlgorithm",
-        "javac RingElection.java",
-        "java RingElection",
+        "Place RingElection.java inside fifth_updated/",
+        "javac fifth_updated/RingElection.java",
+        "java fifth_updated.RingElection",
       ],
     },
     {
@@ -1360,73 +1366,93 @@ public class MapReduceWordCount {
         {
           file_name: "mapReduce.py",
           language: "Python",
-          code: `import re
+          code: `import sys
 from collections import defaultdict
-
+import re
 
 # --- Step 1: Mapper Function ---
 def mapper(document):
-  """
-  Reads a document, cleans it, and emits (word, 1) for each word.
-  """
-  text = document.lower()
-  text = re.sub(r"[^\w\s]", "", text)
-  words = text.split()
-  for word in words:
-    if word:
-      yield (word, 1)
+    """
+    Reads a document, cleans it, and emits (word, 1) for each word.
+    """
+    text = document.lower()
+    text = re.sub(r"[^\w\s]", "", text)  # Remove punctuation
+    words = text.split()
+    for word in words:
+        if word:
+            yield (word, 1)
 
-
-# --- Step 2: Reducer Function ---
+# --- Step 3: Reducer Function ---
 def reducer(key, values):
-  """
-  Sums the values for a given key.
-  """
-  total = sum(values)
-  yield (key, total)
+    """
+    Sums the values for a given key.
+    """
+    total = sum(values)
+    yield (key, total)
 
-
+# --- Main Program: Take Input from User ---
 if __name__ == "__main__":
-  documents = [
-    "Data science is the future of technology and business intelligence.",
-    "Machine learning algorithms can analyze massive amounts of data efficiently.",
-    "Big data analytics helps companies make better business decisions.",
-    "Python programming is essential for data science and machine learning projects.",
-  ]
+    print("=== MapReduce Word Count (User Input Mode) ===\n")
+    print("Enter your text below (one line at a time).")
+    print("Type 'END' on a new line when finished.\n")
 
-  print("--- Input Documents ---")
-  for doc in documents:
-    print(f"- {doc}")
-  print("\n" + "=" * 30 + "\n")
+    documents = []
+    print("Enter text:")
+    while True:
+        line = input()
+        if line.strip().upper() == "END":
+            break
+        documents.append(line)
 
-  print("--- 1. Map Phase ---")
-  mapped_pairs = []
-  for doc in documents:
-    for pair in mapper(doc):
-      mapped_pairs.append(pair)
-      print(f"  Mapper output: {pair}")
-  print("\n" + "=" * 30 + "\n")
+    if not documents:
+        print("\nNo input provided. Exiting.")
+        sys.exit(0)
 
-  print("--- 2. Shuffle & Sort Phase (Grouping) ---")
-  shuffled_data = defaultdict(list)
-  for key, value in mapped_pairs:
-    shuffled_data[key].append(value)
-  for key, values in sorted(shuffled_data.items()):
-    print(f"  Grouped: ('{key}', {values})")
-  print("\n" + "=" * 30 + "\n")
+    print("\n" + "=" * 50)
+    print("--- Input Documents ---")
+    for i, doc in enumerate(documents, 1):
+        print(f"{i}: {doc}")
+    print("=" * 50 + "\n")
 
-  print("--- 3. Reduce Phase ---")
-  final_counts = {}
-  for key, values in sorted(shuffled_data.items()):
-    for result_key, result_value in reducer(key, values):
-      final_counts[result_key] = result_value
-      print(f"  Reducer output: ('{result_key}', {result_value})")
-  print("\n" + "=" * 30 + "\n")
+    # --- MAP PHASE ---
+    print("--- 1. Map Phase ---")
+    mapped_pairs = []
+    for doc in documents:
+        for word, count in mapper(doc):
+            mapped_pairs.append((word, count))
+            print(f"  -> ('{word}', {count})")
 
-  print("--- Final Word Count Results ---")
-  sorted_results = sorted(final_counts.items(), key=lambda item: item[1], reverse=True)
-  for word, count in sorted_results:
-    print(f"{word:<15} {count}")
+    print("\n" + "=" * 50 + "\n")
+
+    # --- SHUFFLE AND SORT PHASE ---
+    print("--- 2. Shuffle & Sort Phase (Grouping) ---")
+    shuffled_data = defaultdict(list)
+    for key, value in mapped_pairs:
+        shuffled_data[key].append(value)
+
+    for key in sorted(shuffled_data.keys()):
+        print(f"  Grouped: ('{key}', {shuffled_data[key]})")
+
+    print("\n" + "=" * 50 + "\n")
+
+    # --- REDUCE PHASE ---
+    print("--- 3. Reduce Phase ---")
+    final_counts = {}
+    for key in sorted(shuffled_data.keys()):
+        for result_key, result_value in reducer(key, shuffled_data[key]):
+            final_counts[result_key] = result_value
+            print(f"  -> ('{result_key}', {result_value})")
+
+    print("\n" + "=" * 50 + "\n")
+
+    # --- FINAL OUTPUT ---
+    print("--- Final Word Count Results ---")
+    sorted_results = sorted(final_counts.items(), key=lambda x: x[1], reverse=True)
+    for word, count in sorted_results:
+        print(f"{word:<20} {count}")
+
+    print("\n" + "=" * 50)
+    print("MapReduce Job Completed!")
 `,
         },
       ],
