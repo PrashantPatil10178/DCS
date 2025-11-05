@@ -52,6 +52,26 @@ interface AssignmentCardProps {
   assignment: Assignment;
 }
 
+const encodeToBase64 = (value: string) => {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  if (typeof btoa === "function") {
+    return btoa(binary);
+  }
+
+  const globalBuffer = (globalThis as any)?.Buffer;
+  if (globalBuffer) {
+    return globalBuffer.from(value, "utf-8").toString("base64");
+  }
+
+  throw new Error("Base64 encoding is not supported in this environment.");
+};
+
 export function AssignmentCard({ assignment }: AssignmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -84,14 +104,16 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
   };
 
   const copyAllFiles = () => {
-    // Create PowerShell commands to create all files
+    // Create PowerShell commands that stay ASCII-safe when pasted into PowerShell
     let output = `# Assignment ${assignment.id}: ${assignment.title}\n`;
     output += `# Topic: ${assignment.topic}\n`;
     output += `# Paste this entire block into PowerShell to create all files\n\n`;
 
     // Add PowerShell commands for each file
     allFiles.forEach((file) => {
-      output += `@"\n${file.code}\n"@ | Out-File -FilePath "${file.file_name}" -Encoding UTF8\n`;
+      const base64 = encodeToBase64(file.code);
+      output += `$DecodedContent = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${base64}"))\n`;
+      output += `[System.IO.File]::WriteAllText("${file.file_name}", $DecodedContent, [System.Text.Encoding]::UTF8)\n`;
       output += `Write-Host "Created: ${file.file_name}" -ForegroundColor Green\n\n`;
     });
 
@@ -119,7 +141,9 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
       .filter(Boolean)
       .join("\n\n");
 
-    output += `@"\n${instructionsContent}\n"@ | Out-File -FilePath "RUN_INSTRUCTIONS.txt" -Encoding UTF8\n`;
+    const instructionsBase64 = encodeToBase64(instructionsContent);
+    output += `$DecodedContent = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${instructionsBase64}"))\n`;
+    output += `[System.IO.File]::WriteAllText("RUN_INSTRUCTIONS.txt", $DecodedContent, [System.Text.Encoding]::UTF8)\n`;
     output += `Write-Host "Created: RUN_INSTRUCTIONS.txt" -ForegroundColor Green\n`;
     output += `Write-Host "All files created successfully!" -ForegroundColor Cyan\n\n`;
     output += `# Clear both session history AND persistent PSReadLine history\n`;

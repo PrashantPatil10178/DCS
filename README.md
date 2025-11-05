@@ -7,7 +7,7 @@ This guide explains how to clone, install, and run the project locally on Androi
 ## Prerequisites
 
 - Android device with the latest [Termux](https://f-droid.org/packages/com.termux/) installed (use the F-Droid release, not the Play Store version).
-- Stable internet connection (initial install pulls ~200 MB of packages).
+- Stable internet connection (initial install pulls ~200 MB of packages).
 - Optional: Bluetooth keyboard or external display for a more comfortable coding setup.
 
 ## Quick Start on Termux
